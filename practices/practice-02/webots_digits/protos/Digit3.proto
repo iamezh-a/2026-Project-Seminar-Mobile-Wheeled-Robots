@@ -1,0 +1,154 @@
+#VRML_SIM R2025a utf8
+
+PROTO Digit3 [
+  field SFVec3f translation 0 0 0
+  field SFString name "Digit3"
+]
+{
+  Solid {
+    translation IS translation
+    name IS name
+
+    children [
+      Transform {
+        translation 0 0 1.5
+
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.5 0.5 0.5
+              roughness 1
+              metalness 0
+            }
+
+            geometry Box {
+              size 1.2 0.15 0.15
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0 0 0.075
+
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.5 0.5 0.5
+              roughness 1
+              metalness 0
+            }
+            geometry Box {
+              size 1.2 0.15 0.15
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0 0 0.7875
+
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.5 0.5 0.5
+              roughness 1
+              metalness 0
+            }
+            geometry Box {
+              size 1.2 0.15 0.15
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.525 0 1.14375
+
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.5 0.5 0.5
+              roughness 1
+              metalness 0
+            }
+            geometry Box {
+              size 0.15 0.15 0.5625
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.525 0 0.43125
+
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.5 0.5 0.5
+              roughness 1
+              metalness 0
+            }
+            geometry Box {
+              size 0.15 0.15 0.5625
+            }
+          }
+        ]
+      }
+    ]
+    boundingObject Group {
+      children [
+
+
+        Pose {
+          translation 0 0 1.5
+          children [
+            Box {
+              size 1.2 0.15 0.15
+            }
+          ]
+        }
+
+
+
+        Pose {
+          translation 0 0 0.075
+          children [
+            Box {
+              size 1.2 0.15 0.15
+            }
+          ]
+        }
+
+
+
+        Pose {
+          translation 0.525 0 1.14375
+          children [
+            Box {
+              size 0.15 0.15 0.5625
+            }
+          ]
+        }
+
+
+
+        Pose {
+          translation 0.525 0 0.43125
+          children [
+            Box {
+              size 0.15 0.15 0.5625
+            }
+          ]
+        }
+
+
+
+        Pose {
+          translation 0 0 0.7875
+          children [
+            Box {
+              size 1.2 0.15 0.15
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
