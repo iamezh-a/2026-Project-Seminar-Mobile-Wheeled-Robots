@@ -1,0 +1,30 @@
+{
+  "experiment_name": "noise_0_02",
+  "requested_duration_s": 120.0,
+  "start_sim_time_s": 0.64,
+  "initial_gt_pose": [
+    1.000000000546123,
+    -9.749878474019091e-10,
+    1.570796380464596
+  ],
+  "frame": "map",
+  "time_alignment": "TF lookups at a common timestamp",
+  "sample_count": 1201,
+  "duration_s": 120.0,
+  "encoders": {
+    "position_rmse_m": 0.04639608712289395,
+    "position_max_m": 0.08909328705390675,
+    "position_final_m": 0.0890779662027916,
+    "yaw_rmse_rad": 0.04754203589184238,
+    "yaw_max_rad": 0.09979398477408266,
+    "yaw_final_rad": 0.08560997631198006
+  },
+  "commands": {
+    "position_rmse_m": 0.08003450960212086,
+    "position_max_m": 0.13682919230749516,
+    "position_final_m": 0.13559113379911739,
+    "yaw_rmse_rad": 0.07740984162567908,
+    "yaw_max_rad": 0.1300675773582495,
+    "yaw_final_rad": 0.1300675773582495
+  }
+}
