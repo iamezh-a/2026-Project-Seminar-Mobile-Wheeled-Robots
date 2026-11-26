@@ -1,0 +1,492 @@
+%!TEX TS-program = xelatex
+
+% Официальный шаблон презентации НИУ ВШЭ в beamer (LaTeX)
+% Версия 2.0
+% Язык — русский
+
+\documentclass[aspectratio=169]{beamer}
+
+\newbool{russian}
+\booltrue{russian}
+\usepackage{HSE-theme/beamerthemeHSE}
+
+%%% Работа с русским языком и шрифтами
+\usepackage{multirow}
+\usepackage{listings} 
+\usepackage[dvipsnames,table]{xcolor}
+\usepackage[english,russian,shorthands=off]{babel}
+\usepackage[no-math]{fontspec}
+\usepackage{makecell}
+	\IfFontExistsTF{HSE Sans}
+		{\newcommand{\presentationfont}{HSE Sans}}
+		{\newcommand{\presentationfont}{Arial}}
+	\setsansfont{\presentationfont}
+	\setmonofont{Courier New}
+\usepackage[most]{tcolorbox}
+
+\usepackage{mathspec}
+	\setmathsfont(Digits,Latin,Greek)[Numbers={Lining,Proportional}]{\presentationfont}
+	\setmathrm[Numbers={Lining,Proportional}]{\presentationfont}
+\uselanguage{russian}
+\languagepath{russian}
+\deftranslation[to=russian]{Theorem}{Теорема}
+\deftranslation[to=russian]{Definition}{Определение}
+\deftranslation[to=russian]{Definitions}{Определения}
+\deftranslation[to=russian]{Corollary}{Следствие}
+\deftranslation[to=russian]{Fact}{Факт}
+\deftranslation[to=russian]{Example}{Пример}
+\deftranslation[to=russian]{Examples}{Примеры}
+
+\usepackage{booktabs}
+\usepackage{array}
+\graphicspath{{images/}}
+
+
+\newcommand{\term}[1]{{\textcolor{HSEblue}{#1}}}
+\newcommand{\cmd}[1]{\textcolor{HSEblue}{\texttt{#1}}}
+\lstset{ 
+    basicstyle=\color{HSEblue}\ttfamily\small,
+    numbers=left,
+    numberstyle=\color{HSEblue}\ttfamily\scriptsize,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    breaklines=true,
+    rulecolor=\color{HSEblue},
+}
+
+
+%% Информация об авторе и выступлении
+
+\title[Мобильные колесные роботы]{Основы автономной навигации. Знакомство с Nav2}
+\subtitle{Проектный семинар <<Мобильные колесные роботы>>}
+\author[Команда курса]{Дергачев Степан  Алексеевич, \texttt{\href{mailto:sadergachev@hse.ru}{sadergachev@hse.ru}} \\ Муравьев Кирилл Федорович, \texttt{\href{mailto:kmuravev@hse.ru}{kmuravev@hse.ru}}}
+\institute{Факультет компьютерных наук НИУ ВШЭ}
+\date{26 ноября 2026}
+
+
+% Отключаем активные кавычки babel для совместимости с mathspec.
+\AtBeginDocument{\shorthandoff{"}}
+% Убираем лишний пробел после полноширинного блока номера страницы.
+% Внешний вид и файл темы HSE остаются прежними.
+\makeatletter
+\patchcmd{\beamer@@tmpl@footline}{\end{beamercolorbox} }{\end{beamercolorbox}}{}{}
+\makeatother
+% Подпись под иллюстрацией ведёт на страницу, где опубликован оригинал.
+\newcommand{\figsource}[2]{\par\smallskip{\centering\footnotesize\href{#1}{#2}\par}}
+\begin{document}
+\frame[plain]{\titlepage}
+
+\section{Задача навигации} % 14 минут, включая титульный слайд
+
+\begin{frame}{Задача автономной навигации}
+\begin{columns}[c,onlytextwidth]
+\column{.55\textwidth}
+\begin{itemize}
+\item Робот должен переместиться из начального состояния $s = (p_{x,s},p_{x,s}, \theta_s)$ в заданное целевое $g = (p_{x,g},p_{y,g}, \theta_g)$, избегая столкновений с препятствиями.
+\item Связанные задачи:
+\begin{itemize}
+  \normalsize
+  \item Обход последовательности точек
+  \item Покрытие области
+\end{itemize}
+\end{itemize}
+\column{.41\textwidth}
+\centering
+\includegraphics[width=\linewidth]{hehe.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Автономная навигация в широком смысле}
+
+\renewcommand{\arraystretch}{1.2}
+% \small
+\begin{tabular}{>{\raggedright\arraybackslash}m{0.23\textwidth}>{\raggedright\arraybackslash}m{0.68\textwidth}}
+\toprule
+\term{Задача} & \term{В чем суть} \\
+\midrule
+
+Картирование & По измерениям датчиков строится представление среды \\
+Локализация & По карте и измерениям датчиков оценивается состояние робота \\
+Планирование & По карте и оценке позы строится путь к цели (и/или последовательность управлений) \\
+Исполнение & Контроллер робота переводит управления в сигналы актуаторам робота\\
+\bottomrule
+\end{tabular}
+\vfill
+
+\end{frame}
+
+
+\begin{frame}{Автономная навигация в широком смысле}
+
+\renewcommand{\arraystretch}{1.2}
+% \small
+\begin{tabular}{>{\raggedright\arraybackslash}m{0.23\textwidth}>{\raggedright\arraybackslash}m{0.68\textwidth}}
+\toprule
+\term{Задача} & \term{В чем суть} \\
+\midrule
+
+Картирование & По измерениям датчиков строится представление среды \\
+Локализация & По карте и измерениям датчиков оценивается состояние робота \\
+\rowcolor{HSEblue!15}Планирование & По карте и оценке позы строится путь к цели (и/или последовательность управлений) \\
+Исполнение & Контроллер робота переводит управления в сигналы актуаторам робота\\
+\bottomrule
+\end{tabular}
+\vfill
+
+\end{frame}
+
+\begin{frame}{Глобальное и локальное планирование}
+\begin{columns}[T,onlytextwidth]
+\column{.48\textwidth}
+\begin{block}{Глобальный уровень}
+  \begin{itemize}
+    \item Ищет путь от текущего состояния до целевого
+  \end{itemize}
+
+\end{block}
+\column{.48\textwidth}
+\begin{block}{Локальный уровень}
+    \begin{itemize}
+    \item Ведет робота вдоль глобального пути, избегая столкновений
+  \end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Глобальное планирование}
+\begin{columns}[c,onlytextwidth]
+\small
+\column{.54\textwidth}
+\begin{block}{Цели:}
+  \begin{itemize}
+    \item Найти глобальный маршрут
+    \item Проверить достижимость
+  \end{itemize}
+\end{block}
+\begin{block}{Особенности:}
+  \begin{itemize}
+    \item Большой горизонт планирования
+    \item Низкая (относительно) частота запуска
+    \item Геометрический путь (без управлений)
+    \item (Обычно) не учитывает форму робота и его кино-динамические ограничения
+  \end{itemize}
+\end{block}
+\column{.35\textwidth}
+\centering
+\includegraphics[width=\linewidth]{glob_plan.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Локальное планирование}
+\begin{columns}[c,onlytextwidth]
+\small
+\column{.59\textwidth}
+\begin{block}{Цели:}
+  \begin{itemize}
+    \item Найти управление для следования траектории
+    \item Избежать столкновений с динамическими препятствиями
+  \end{itemize}
+\end{block}
+\begin{block}{Особенности:}
+  \begin{itemize}
+    \item Маленький горизонт планирования
+    \item Высокая частота запуска
+    \item Текущее управляющее воздействие / последовательность воздействий
+    \item Зачастую учитывает форму и ограничения робота
+  \end{itemize}
+\end{block}
+\column{.40\textwidth}
+\centering
+\includegraphics[width=\linewidth]{dwa.png}
+\end{columns}
+\end{frame}
+
+\section{Архитектура Nav2} % 12 минут
+
+\begin{frame}{Архитектура Nav2}
+\centering
+\includegraphics[width=0.7\linewidth]{nav2_architecture.png}
+\end{frame}
+
+\begin{frame}{Что не является частью Nav2}
+\begin{itemize}
+  \item \term{Картирование$^*$.} Может использовать карту от внешнего источника
+  \item \term{Локализация$^*$}. Использует позицию и скорость, полученные из дерева \cmd{tf2} и топика \cmd{odom}. Ожидается существование следующего преобразования:
+  \begin{center}
+    \cmd{map} $\to$ \cmd{odom} $\to$ \cmd{base\_link}
+  \end{center}
+  \item \term{Исполнение}. Команы в формате \cmd{cmd\_vel} отправляются на исполнение драйвером робота (например через \cmd{ros2\_control})
+  \end{itemize}
+  \noindent\rule{\textwidth}{0.4pt}\smallskip
+  \footnotesize
+  \begin{itemize}
+    \item[$^*$] \textit{Nav2 содержит в себе пакеты \cmd{map\_server} и \cmd{amcl}. При работе с готовой картой узел \cmd{map\_server} публикует её, а \cmd{amcl} оценивает состояние. Также поддерживается родственный проект \cmd{slam\_toolbox}, реализующий одновременное картирование и локализацию}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Planner Server}
+Принимает целевую позу через Action-интерфейс \cmd{compute\_path\_to\_pose} (инициируется при получении сообщения из топика \cmd{/goal\_pose}) и публикует рассчитанный глобальный путь типа \cmd{nav\_msgs/Path} в топик \cmd{/plan}.
+\begin{block}{Варианты планировщиков}
+\begin{itemize}
+  \item \term{NavFn} -- быстрый поиск пути по сетке (на основе Дейкстры / A*) для роботов с круглой базой.
+  \item \term{Smac} -- поиск пути с учетом радиуса поворота и габаритов робота.
+  \item \term{Theta Star} -- поиск пути, строящий спрямленные траектории.
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{Controller Server}
+  Принимает текущий план через Action-интерфейс \cmd{follow\_path} и с заданной частотой вычисляет и публикует команду типа \cmd{geometry\_msgs/Twist} (или \cmd{TwistStamped}) в топик \cmd{/cmd\_vel}.
+  \begin{block}{Варианты планировщиков}
+    \begin{itemize}
+      \item \term{Regulated Pure Pursuit} -- геометрическое следование за точкой на пути
+      \item \term{DWB} -- следование пути с избеганием столкновений на основе оценки множества допустимых скоростей.
+      \item \term{MPPI} -- следование пути с избеганием столкновений на основе стохастического сэмплирования траекторий
+      \item \term{Rotation Shim} -- вспомогательный контроллер, разворачивающий робота на месте в сторону пути перед передачей управления основному алгоритму.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+% \section{Представление среды в Nav2} % 13 минут
+
+\begin{frame}{Карта стоимости (Costmap2D)}
+\begin{columns}[c,onlytextwidth]
+\column{.49\textwidth}
+\begin{itemize}
+  \item Двумерная карта занятости с квадратными ячейками
+  \item Каждая клетка хранит число в диапазоне 0 - 255, характеризующую стоимость прохождения для планировщиков
+  \item Значения выше порога 252 считаются непроходимыми (значение 255 по умолчанию используется для неизвесного пространства)
+\end{itemize}
+\medskip
+\column{.47\textwidth}
+\centering
+\includegraphics[width=0.8\linewidth]{costmap_rviz.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Слои Costmap2D}
+\begin{columns}[c,onlytextwidth]
+\column{.64\textwidth}
+\begin{itemize}
+  \small
+\item \term{Static Layer} -- переносит данные статической карты (например, от SLAM)
+  \item \term{Obstacle Layer} -- отмечает препятствия по 2D-сканам (например, от 2D LiDAR)
+  \item \term{Voxel Layer} -- отмечает препятствия по 3D-облакам точек (например, от 3D LiDAR или камер глубины)
+  \item  \term{Spatial-Temporal Voxel Layer} -- отмечает препятствия по 3D-облакам точек, поддерживая очистку как по времени затухания, так и трассировкой лучей
+  \item \term{Inflation Layer} -- повышает стоимость ячеек в окрестности отмеченных препятствий
+\end{itemize}
+\medskip
+\column{.35\textwidth}
+\centering
+\includegraphics[width=\linewidth]{layers.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Inflation Layer}
+\begin{columns}[c,onlytextwidth]
+\column{.49\textwidth}
+\begin{itemize}
+  \small
+  \item Нужен для создания буферной зоны безопасности
+  \item Добавляет непроходимые ячейки (\cmd{cost = 253}) в пределах вписанного радиуса робота
+  \item Добавляет ячейки высокой стоимости в пределах описанного радиуса (\cmd{cost = 128-252})
+  \item Добавляет ячейки повышенной стоимости в пределах  радиуса "расширения" робота (\cmd{cost = 1-227})
+\end{itemize}
+
+\column{.5\textwidth}
+\centering
+\includegraphics[width=\linewidth]{costmap_inflation.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Глобальная и локальная карты}
+\small
+\begin{itemize}
+  \item У каждой карты свои параметры, в том числе частота обновления и список слоёв
+\end{itemize}
+\medskip
+\centering
+\renewcommand{\arraystretch}{1.42}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{4.8cm}>{\raggedright\arraybackslash}p{4.9cm}@{}}
+\toprule
+ & \term{Глобальная карта} & \term{Локальная карта} \\
+\midrule
+Кто использует & Planner Server & Controller Server \\
+Область & Обычно вся известная среда & Ограниченная область вокруг робота \\
+Система координат & Обычно \cmd{map} & Обычно \cmd{odom} \\
+Источники & Карта от SLAM, при необходимости данные датчиков & В первую очередь данные бортовых датчиков \\
+\bottomrule
+\end{tabular}
+\par\medskip
+
+\end{frame}
+
+% \section{Выполнение задачи} % 16 минут
+
+\begin{frame}[fragile]{Жизненный цикл узлов Nav2}
+  \small
+  \begin{itemize}
+    \item Основные серверы Nav2 реализованы как управляемые узлы
+          (\term{Managed Nodes}).
+    \item Работа узла организована через явные состояния и переходы.
+    \item \term{Lifecycle Manager} управляет переходами группы узлов,
+          обеспечивая заданный порядок их запуска и остановки.
+  \end{itemize}
+
+  \begin{block}{Состояния узла}
+  \begin{itemize}
+      \item \term{Unconfigured} -- узел создан, но ещё не настроен.
+      \item \term{Inactive} -- узел настроен, необходимые ресурсы
+            подготовлены, но основная работа не выполняется.
+      \item \term{Active} -- узел выполняет свои функции: обрабатывает
+            данные, запросы и публикует результаты.
+      \item \term{Finalized} -- работа узла завершена, он ожидает
+            уничтожения.
+  \end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{BT Navigator}
+  \small
+  \begin{itemize}
+    \item Компонент Nav2, который
+          координирует выполнение навигационных задач.
+    \item Логика навигации описывается с помощью
+          \term{дерева поведения} (Behavior Tree, BT).
+  \end{itemize}
+
+  \begin{block}{Основные функции}
+    \begin{itemize}
+  \item Принимает навигационные цели через Action,
+      цель также можно задать через топик \cmd{goal\_pose}
+      \item Запускает и выполняет дерево поведения.
+      \item Обращается к серверам Nav2:
+            планировщику, контроллеру и другим компонентам
+      \item Организует перепланирование и действия при ошибках
+      \item Возвращает клиенту обратную связь и результат навигации
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+
+\begin{frame}{Восстановление после ошибки (Recovery)}
+
+  \begin{itemize}
+    \item Во время навигации могут возникать ошибки: путь не найден, контроллер не может продолжить движение или робот не продвигается к цели.
+    \item \term{Recovery} -- действия, которые помогают устранить причину ошибки и повторить выполнение задачи.
+    \item Примеры действий: очистка costmap, ожидание, поворот на месте или движение назад.
+    \item В дереве поведения можно задать отдельные действия восстановления для планировщика, контроллера или навигации в целом.
+    \item Если восстановление не помогло и допустимое число попыток исчерпано, навигация завершается с ошибкой.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Пример Behavior Tree}
+\vfill
+\begin{center}
+\includegraphics[height=0.6\textheight]{images/bt_example.png}
+\end{center}
+\vfill
+\end{frame}
+
+
+\begin{frame}{Другие интересные компоненты Nav2}
+  \begin{itemize}
+    \item \term{Smoother Server} -- сглаживает путь, например
+          убирает мелкие изломы после поиска по сетке.
+
+    \item \term{Route Server} -- строит маршрут по заданному графу.
+          Например, рёбра графа могут соответствовать проездам
+          между стеллажами.
+
+    \item \term{Docking Server} -- управляет подъездом к
+          док-станции и стыковкой. Например, робот может
+          самостоятельно подъехать к зарядной станции.
+
+    \item \term{Coverage Server} -- строит путь для покрытия
+          заданной области. Например, такой путь можно
+          использовать для уборки помещения.
+
+    \item \term{Following Server} -- организует следование
+          за движущимся объектом с поддержанием заданной
+          дистанции, например за человеком.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Другие интересные компоненты Nav2}
+  \begin{itemize}
+    \item \term{Velocity Smoother} -- сглаживает команды
+          скорости с учётом ограничений на скорость и ускорение.
+          Например, при резком изменении заданной скорости
+          команда роботу изменяется постепенно.
+
+    \item \term{Collision Monitor} -- проверяет заданные зоны
+          вокруг робота по данным датчиков. При обнаружении
+          препятствия может ограничить команду скорости
+          или остановить робота.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Запуск Nav2}
+
+  \begin{itemize}
+    \item Для запуска Nav2 необходимо запустить навигационные
+          узлы, передать им параметры и перевести управляемые
+          узлы в рабочее состояние.
+    \item Можно создать собственный launch-файл,
+          в котором описать необходимые узлы, их параметры
+          и Lifecycle Manager для управления их состояниями.
+    \item Для начала работы удобно использовать пакет
+          \term{nav2\_bringup}
+    \item Готовые launch-файлы можно включить в собственный
+          launch-файл и передать им параметры
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Файлы конфигурации Nav2}
+  \begin{itemize}
+    \item \term{Launch-файл} -- описывает запуск узлов,
+          передаваемые им параметры и переназначения топиков.
+
+    \item \term{Параметры узлов} -- YAML-файл с параметрами
+          узлов и используемых ими плагинов.
+
+    \item \term{Дерево поведения} -- XML-файл, описывающий
+          узлы дерева и связи между ними. Путь к дереву
+          по умолчанию можно задать в параметрах BT Navigator.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Плагины Nav2}
+Планировщики, контроллеры и слои карт стоимости подключаются как плагины.
+\begin{block}{Пример настройки планировщика:}
+\begin{lstlisting}[numbers=none]
+planner_server:
+  ros__parameters:
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      use_astar: false
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+
+\begin{frame}{Полезные материалы}
+\begin{itemize}
+  \item \href{https://docs.nav2.org/jazzy/}{Документация Nav2 Jazzy}
+  \item \href{https://ftp.osuosl.org/pub/ros/ros_wiki_mirror/costmap_2d.html}{ROS Wiki. costmap\_2d для ROS 1}
+  \item \href{https://docs.nav2.org/jazzy/configuration_and_development/configuration_guide/core_servers/costmap_2d/}{Документация Nav2 Jazzy. Costmap 2D}
+  
+  \item \href{https://docs.nav2.org/jazzy/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/}{Документация Nav2 Jazzy. Разбор примера дерева поведения для навигации с перепланированием и восстановлением}
+  \item \href{https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/params/nav2_params.yaml}{GitHub. Файл параметров nav2\_params.yaml из пакета nav2\_bringup} 
+  \item \href{https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/launch/bringup_launch.py}{GitHub. Launch-файл bringup\_launch.py из пакета nav2\_bringup} 
+\end{itemize}
+\end{frame}
+\end{document}
