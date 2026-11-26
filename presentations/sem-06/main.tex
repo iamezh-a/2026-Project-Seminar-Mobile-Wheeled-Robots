@@ -94,7 +94,7 @@
 \end{itemize}
 \column{.41\textwidth}
 \centering
-\includegraphics[width=\linewidth]{rviz_goal.png}
+\includegraphics[width=\linewidth]{hehe.png}
 \end{columns}
 \end{frame}
 
@@ -227,7 +227,7 @@
 \end{frame}
 
 \begin{frame}{Planner Server}
-Принимает целевую позу через Action-интерфейс \cmd{/compute\_path\_to\_pose} (инициируется при получении сообщения из топика \cmd{/goal\_pose}) и публикует рассчитанный глобальный путь типа \cmd{nav\_msgs/Path} в топик \cmd{/plan}.
+Принимает целевую позу через Action-интерфейс \cmd{compute\_path\_to\_pose} (инициируется при получении сообщения из топика \cmd{/goal\_pose}) и публикует рассчитанный глобальный путь типа \cmd{nav\_msgs/Path} в топик \cmd{/plan}.
 \begin{block}{Варианты планировщиков}
 \begin{itemize}
   \item \term{NavFn} -- быстрый поиск пути по сетке (на основе Дейкстры / A*) для роботов с круглой базой.
@@ -237,236 +237,256 @@
 \end{block}
 \end{frame}
 
-% \begin{frame}{Controller Server}
-% Сервер получает путь через \cmd{FollowPath}. На каждом шаге управления плагин вычисляет команду скорости по пути, текущей позе, скорости и локальной карте стоимости.
-% \begin{itemize}
-%   \item Regulated Pure Pursuit выбирает опорную точку на пути и снижает скорость на крутых поворотах.
-%   \item DWB проверяет несколько вариантов движения на коротком интервале и оценивает их по близости к пути и препятствиям.
-% \end{itemize}
-% \medskip
-% Сервер отдельно проверяет продвижение робота и достижение цели с заданным допуском по положению и углу.
-% \end{frame}
+\begin{frame}{Controller Server}
+  Принимает текущий план через Action-интерфейс \cmd{follow\_path} и с заданной частотой вычисляет и публикует команду типа \cmd{geometry\_msgs/Twist} (или \cmd{TwistStamped}) в топик \cmd{/cmd\_vel}.
+  \begin{block}{Варианты планировщиков}
+    \begin{itemize}
+      \item \term{Regulated Pure Pursuit} -- геометрическое следование за точкой на пути
+      \item \term{DWB} -- следование пути с избеганием столкновений на основе оценки множества допустимых скоростей.
+      \item \term{MPPI} -- следование пути с избеганием столкновений на основе стохастического сэмплирования траекторий
+      \item \term{Rotation Shim} -- вспомогательный контроллер, разворачивающий робота на месте в сторону пути перед передачей управления основному алгоритму.
+    \end{itemize}
+  \end{block}
+\end{frame}
 
-% \begin{frame}{Rotation Shim Controller}
-% У дифференциального робота начальное направление пути может сильно отличаться от ориентации корпуса. Например, путь идёт вдоль коридора, а робот стоит поперёк.
-% \medskip
-% \begin{enumerate}
-%   \item При получении пути Rotation Shim сравнивает направление его начального участка с курсом робота.
-%   \item Если угол больше порога, контроллер задаёт поворот на месте.
-%   \item После разворота команды вычисляет основной контроллер, указанный в параметре \cmd{primary\_controller}.
-% \end{enumerate}
-% \end{frame}
 
 % \section{Представление среды в Nav2} % 13 минут
 
-% \begin{frame}{Карта стоимости (costmap)}
-% \begin{columns}[c,onlytextwidth]
-% \column{.49\textwidth}
-% Карта занятости хранит сведения о свободных и занятых участках среды. В карте стоимости каждая клетка получает значение, которое планировщик или контроллер использует при оценке движения.
-% \medskip
+\begin{frame}{Карта стоимости (Costmap2D)}
+\begin{columns}[c,onlytextwidth]
+\column{.49\textwidth}
+\begin{itemize}
+  \item Двумерная карта занятости с квадратными ячейками
+  \item Каждая клетка хранит число в диапазоне 0 - 255, характеризующую стоимость прохождения для планировщиков
+  \item Значения выше порога 252 считаются непроходимыми (значение 255 по умолчанию используется для неизвесного пространства)
+\end{itemize}
+\medskip
+\column{.47\textwidth}
+\centering
+\includegraphics[width=0.8\linewidth]{costmap_rviz.png}
+\end{columns}
+\end{frame}
 
-% На рисунке красные клетки заняты. Синим показана область, в которой центр робота будет слишком близко к препятствию. Красный контур в центре~--- проекция корпуса (\cmd{footprint}).
-% \column{.47\textwidth}
-% \centering
-% \includegraphics[width=\linewidth,height=5.65cm,keepaspectratio]{costmap_rviz.png}
-% \figsource{https://ftp.osuosl.org/pub/ros/ros_wiki_mirror/costmap_2d.html}{Карта стоимости в RViz. ROS Wiki, costmap\_2d}
-% \end{columns}
-% \end{frame}
+\begin{frame}{Слои Costmap2D}
+\begin{columns}[c,onlytextwidth]
+\column{.64\textwidth}
+\begin{itemize}
+  \small
+\item \term{Static Layer} -- переносит данные статической карты (например, от SLAM)
+  \item \term{Obstacle Layer} -- отмечает препятствия по 2D-сканам (например, от 2D LiDAR)
+  \item \term{Voxel Layer} -- отмечает препятствия по 3D-облакам точек (например, от 3D LiDAR или камер глубины)
+  \item  \term{Spatial-Temporal Voxel Layer} -- отмечает препятствия по 3D-облакам точек, поддерживая очистку как по времени затухания, так и трассировкой лучей
+  \item \term{Inflation Layer} -- повышает стоимость ячеек в окрестности отмеченных препятствий
+\end{itemize}
+\medskip
+\column{.35\textwidth}
+\centering
+\includegraphics[width=\linewidth]{layers.png}
+\end{columns}
+\end{frame}
 
-% \begin{frame}{Слои карты стоимости}
-% \begin{description}[Obstacle Layer]
-%   \item[Static Layer] Переносит в сетку данные карты занятости, например стены помещения.
-%   \item[Obstacle Layer] Отмечает препятствия по сканам лидара или облаку точек. Если луч лидара проходит через ранее занятую клетку, отметку можно снять.
-%   \item[Inflation Layer] Повышает стоимость клеток в окрестности отмеченных препятствий.
-% \end{description}
-% \medskip
-% Слои обновляют одну сетку в порядке, заданном в конфигурации. Inflation Layer обычно стоит последним в списке.
-% \end{frame}
+\begin{frame}{Inflation Layer}
+\begin{columns}[c,onlytextwidth]
+\column{.49\textwidth}
+\begin{itemize}
+  \small
+  \item Нужен для создания буферной зоны безопасности
+  \item Добавляет непроходимые ячейки (\cmd{cost = 253}) в пределах вписанного радиуса робота
+  \item Добавляет ячейки высокой стоимости в пределах описанного радиуса (\cmd{cost = 128-252})
+  \item Добавляет ячейки повышенной стоимости в пределах  радиуса "расширения" робота (\cmd{cost = 1-227})
+\end{itemize}
 
-% \begin{frame}{Инфляция препятствий}
-% \begin{columns}[c,onlytextwidth]
-% \column{.31\textwidth}
-% \small
-% По горизонтали отложено расстояние от центра робота до ближайшей занятой клетки, по вертикали~--- стоимость.
-% \medskip
+\column{.5\textwidth}
+\centering
+\includegraphics[width=\linewidth]{costmap_inflation.png}
+\end{columns}
+\end{frame}
 
-% В пределах вписанного радиуса корпус задевает препятствие при любом повороте. Дальше стоимость убывает до границы, заданной \cmd{inflation\_radius}.
-% \column{.67\textwidth}
-% \centering
-% \includegraphics[width=\linewidth,height=6.05cm,keepaspectratio]{costmap_inflation.png}
-% \figsource{https://ftp.osuosl.org/pub/ros/ros_wiki_mirror/costmap_2d.html}{Зависимость стоимости от расстояния. ROS Wiki, costmap\_2d}
-% \end{columns}
-% \end{frame}
+\begin{frame}{Глобальная и локальная карты}
+\small
+\begin{itemize}
+  \item У каждой карты свои параметры, в том числе частота обновления и список слоёв
+\end{itemize}
+\medskip
+\centering
+\renewcommand{\arraystretch}{1.42}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{4.8cm}>{\raggedright\arraybackslash}p{4.9cm}@{}}
+\toprule
+ & \term{Глобальная карта} & \term{Локальная карта} \\
+\midrule
+Кто использует & Planner Server & Controller Server \\
+Область & Обычно вся известная среда & Ограниченная область вокруг робота \\
+Система координат & Обычно \cmd{map} & Обычно \cmd{odom} \\
+Источники & Карта от SLAM, при необходимости данные датчиков & В первую очередь данные бортовых датчиков \\
+\bottomrule
+\end{tabular}
+\par\medskip
 
-% \begin{frame}{Глобальная и локальная карты стоимости}
-% \small
-% \centering
-% \renewcommand{\arraystretch}{1.42}
-% \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{4.8cm}>{\raggedright\arraybackslash}p{4.9cm}@{}}
-% \toprule
-%  & \textbf{Глобальная карта} & \textbf{Локальная карта} \\
-% \midrule
-% Сервер & Planner Server & Controller Server \\
-% Область & Обычно вся карта помещения & Окно, которое движется вместе с роботом \\
-% Координаты & Обычно \cmd{map} & Обычно \cmd{odom} \\
-% Источники & Карта занятости, при необходимости данные датчиков & В первую очередь данные бортовых датчиков \\
-% \bottomrule
-% \end{tabular}
-% \par\medskip
-% У каждой карты свои разрешение, частота обновления и список слоёв.
-% \end{frame}
+\end{frame}
 
 % \section{Выполнение задачи} % 16 минут
 
-% \begin{frame}[fragile]{Жизненный цикл узлов Nav2}
-% После запуска процесса сервер находится в состоянии \cmd{unconfigured}. Lifecycle Manager последовательно выполняет два перехода.
-% \begin{description}[configure]
-%   \item[configure] Сервер читает параметры, загружает плагины и переходит в состояние \cmd{inactive}.
-%   \item[activate] Сервер переходит в \cmd{active} и начинает принимать задачи.
-% \end{description}
-% Порядок запуска узлов задаётся в параметрах Lifecycle Manager. Команда для проверки состояния сервера
-% \begin{lstlisting}[numbers=none]
-% ros2 lifecycle get /planner_server
-% \end{lstlisting}
-% \end{frame}
+\begin{frame}[fragile]{Жизненный цикл узлов Nav2}
+  \small
+  \begin{itemize}
+    \item Основные серверы Nav2 реализованы как управляемые узлы
+          (\term{Managed Nodes}).
+    \item Работа узла организована через явные состояния и переходы.
+    \item \term{Lifecycle Manager} управляет переходами группы узлов,
+          обеспечивая заданный порядок их запуска и остановки.
+  \end{itemize}
 
-% \begin{frame}{BT Navigator}
-% Клиент передаёт целевую позу через действие ROS~2 \cmd{NavigateToPose}. Для движения через несколько поз предусмотрено \cmd{NavigateThroughPoses}.
-% \medskip
+  \begin{block}{Состояния узла}
+  \begin{itemize}
+      \item \term{Unconfigured} -- узел создан, но ещё не настроен.
+      \item \term{Inactive} -- узел настроен, необходимые ресурсы
+            подготовлены, но основная работа не выполняется.
+      \item \term{Active} -- узел выполняет свои функции: обрабатывает
+            данные, запросы и публикует результаты.
+      \item \term{Finalized} -- работа узла завершена, он ожидает
+            уничтожения.
+  \end{itemize}
+\end{block}
+\end{frame}
 
-% Для выбранной задачи BT Navigator запускает дерево поведения. В нём задан порядок вызовов серверов и условия для повторного планирования или восстановления после ошибки.
-% \medskip
+\begin{frame}{BT Navigator}
+  \small
+  \begin{itemize}
+    \item Компонент Nav2, который
+          координирует выполнение навигационных задач.
+    \item Логика навигации описывается с помощью
+          \term{дерева поведения} (Behavior Tree, BT).
+  \end{itemize}
 
-% Во время движения клиент получает обратную связь и может отменить задачу.
-% \end{frame}
+  \begin{block}{Основные функции}
+    \begin{itemize}
+  \item Принимает навигационные цели через Action,
+      цель также можно задать через топик \cmd{goal\_pose}
+      \item Запускает и выполняет дерево поведения.
+      \item Обращается к серверам Nav2:
+            планировщику, контроллеру и другим компонентам
+      \item Организует перепланирование и действия при ошибках
+      \item Возвращает клиенту обратную связь и результат навигации
+    \end{itemize}
+  \end{block}
+\end{frame}
 
-% \begin{frame}{Дерево поведения (Behavior Tree)}
-% При каждом обходе дерева управляющий узел обращается к дочерним узлам. Статус действия показывает, продолжается ли оно (\cmd{RUNNING}), завершилось успешно (\cmd{SUCCESS}) или с ошибкой (\cmd{FAILURE}).
-% \begin{itemize}
-%   \item \cmd{Sequence} выполняет дочерние узлы по порядку. Если один из них вернул ошибку, последовательность прерывается.
-%   \item \cmd{Fallback} при ошибке переходит к следующему варианту и останавливается при первом успехе.
-% \end{itemize}
-% \end{frame}
 
-% \begin{frame}{Перепланирование во время движения}
-% \centering
-% \includegraphics[width=.80\textwidth,height=3.85cm,keepaspectratio]{navigation_subtree.png}
-% \figsource{https://docs.nav2.org/jazzy/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/}{Фрагмент дерева навигации без ветвей восстановления. Nav2}
-% \medskip
-% \raggedright
-% \cmd{PipelineSequence} позволяет снова вызвать планировщик, пока контроллер выполняет \cmd{FollowPath}. В типовом дереве Jazzy планировщик вызывается примерно раз в секунду.
-% \end{frame}
 
-% \begin{frame}{Восстановление после ошибки (recovery)}
-% В типовом дереве Nav2 при ошибке планирования можно очистить глобальную карту стоимости и повторить поиск. Для ошибки следования пути предусмотрена очистка локальной карты. Видимое лидару препятствие при следующем обновлении появится снова.
-% \medskip
+\begin{frame}{Восстановление после ошибки (Recovery)}
 
-% Доступны также действия Behavior Server.
-% \begin{itemize}
-%   \item \cmd{Spin}~--- повернуться на месте.
-%   \item \cmd{Wait}~--- подождать, например пока освободится проход.
-%   \item \cmd{BackUp}~--- отъехать назад.
-% \end{itemize}
-% Число повторных попыток ограничено. Если они исчерпаны, клиент получает сообщение о неудаче.
-% \end{frame}
+  \begin{itemize}
+    \item Во время навигации могут возникать ошибки: путь не найден, контроллер не может продолжить движение или робот не продвигается к цели.
+    \item \term{Recovery} -- действия, которые помогают устранить причину ошибки и повторить выполнение задачи.
+    \item Примеры действий: очистка costmap, ожидание, поворот на месте или движение назад.
+    \item В дереве поведения можно задать отдельные действия восстановления для планировщика, контроллера или навигации в целом.
+    \item Если восстановление не помогло и допустимое число попыток исчерпано, навигация завершается с ошибкой.
+  \end{itemize}
 
-% \begin{frame}{Обработка запроса NavigateToPose}
-% \begin{enumerate}
-%   \item BT Navigator принимает цель и передаёт её в дерево поведения.
-%   \item Узел \cmd{ComputePathToPose} запрашивает путь у Planner Server. Путь сохраняется в общей памяти дерева (\textit{blackboard}).
-%   \item Узел \cmd{FollowPath} читает путь и передаёт его в Controller Server. Контроллер выдаёт команды скорости до достижения цели или ошибки.
-%   \item Когда контроллер сообщает о достижении цели, дерево завершается успешно. При ошибке дерево выбирает ветвь восстановления или завершает задачу с ошибкой.
-% \end{enumerate}
-% \end{frame}
+\end{frame}
 
-% \section{Компоненты, запуск и настройка} % 15 минут
 
-% \begin{frame}{Дополнительные серверы Nav2}
-% \begin{description}[Smoother Server]
-%   \item[Smoother Server] Сглаживает путь, например убирает мелкие изломы после поиска по сетке.
-%   \item[Route Server] Строит маршрут по заданному графу. Рёбра графа могут соответствовать проездам между стеллажами.
-%   \item[Docking Server] Управляет подъездом к док-станции и стыковкой. Так робот может самостоятельно подъехать к зарядным контактам.
-% \end{description}
-% \end{frame}
+\begin{frame}{Пример Behavior Tree}
+\vfill
+\begin{center}
+\includegraphics[height=0.6\textheight]{images/bt_example.png}
+\end{center}
+\vfill
+\end{frame}
 
-% \begin{frame}{Обработка команд скорости}
-% \begin{block}{Velocity Smoother}
-% Получает команды контроллера и ограничивает скорость и ускорение. Например, при ступенчатом изменении заданной скорости база разгоняется постепенно.
-% \end{block}
-% \begin{block}{Collision Monitor}
-% Проверяет заданные зоны вокруг корпуса по данным датчиков. При появлении препятствия в зоне может ограничить скорость или остановить робота.
-% \end{block}
-% Если используются оба узла, Collision Monitor ставят после Velocity Smoother, перед контроллером базы.
-% \end{frame}
 
-% \begin{frame}[fragile]{Запуск отдельных узлов}
-% Запуск Planner Server со штатным файлом параметров Jazzy
-% \begin{lstlisting}[numbers=none]
-% bringup=$(ros2 pkg prefix --share nav2_bringup)
-% ros2 run nav2_planner planner_server --ros-args \
-%   --params-file "$bringup/params/nav2_params.yaml"
-% \end{lstlisting}
-% В собственном launch-файле указывают нужные серверы, пути к параметрам и переназначения топиков. Список управляемых узлов передают в Lifecycle Manager.
-% \end{frame}
+\begin{frame}{Другие интересные компоненты Nav2}
+  \begin{itemize}
+    \item \term{Smoother Server} -- сглаживает путь, например
+          убирает мелкие изломы после поиска по сетке.
 
-% \begin{frame}[fragile]{Запуск nav2\_bringup}
-% Запуск с картой из пакета курса и временем симулятора
-% \begin{lstlisting}[numbers=none]
-% maps="$(ros2 pkg prefix --share example_webots_localization)/maps"
-% ros2 launch nav2_bringup bringup_launch.py \
-%   map:="$maps/three_boxes.yaml" use_sim_time:=true
-% \end{lstlisting}
-% \begin{itemize}
-%   \item Робот уже публикует сканы, одометрию и TF. Launch-файл запускает локализацию по карте и навигационные серверы.
-%   \item Параметры конкретного робота передают через \cmd{params\_file}. В них указывают размеры корпуса, системы координат и топики датчиков. Начальную позу для AMCL можно задать в RViz.
-% \end{itemize}
-% \end{frame}
+    \item \term{Route Server} -- строит маршрут по заданному графу.
+          Например, рёбра графа могут соответствовать проездам
+          между стеллажами.
 
-% \begin{frame}{Файлы конфигурации Nav2}
-% \begin{description}[Параметры узлов]
-%   \item[Launch-файл] Перечень узлов, передаваемые им параметры и переназначения топиков.
-%   \item[Описание карты] YAML-файл с путём к изображению, размером клетки в метрах и положением сетки в системе координат карты.
-%   \item[Параметры узлов] YAML-файл с разделом для каждого узла. В нём задают частоты, источники данных, размеры карт стоимости и имена плагинов.
-%   \item[Дерево поведения] XML-файл с узлами дерева и связями между ними. Путь к файлу задают в параметрах BT Navigator.
-% \end{description}
-% \end{frame}
+    \item \term{Docking Server} -- управляет подъездом к
+          док-станции и стыковкой. Например, робот может
+          самостоятельно подъехать к зарядной станции.
 
-% \begin{frame}[fragile]{Плагины Nav2}
-% Планировщики, контроллеры и слои карт стоимости подключаются как плагины. В этом примере сервер загружает один планировщик.
-% \begin{lstlisting}[numbers=none]
-% planner_server:
-%   ros__parameters:
-%     planner_plugins: ["GridBased"]
-%     GridBased:
-%       plugin: "nav2_navfn_planner::NavfnPlanner"
-%       use_astar: false
-% \end{lstlisting}
-% \small
-% В поле \cmd{planner\_id} запроса указывают имя \cmd{GridBased}. Сервер выбирает по нему плагин NavFn. При \cmd{use\_astar: false} он использует алгоритм Дейкстры.
-% \end{frame}
+    \item \term{Coverage Server} -- строит путь для покрытия
+          заданной области. Например, такой путь можно
+          использовать для уборки помещения.
 
-% \begin{frame}{Пример настройки двух карт стоимости}
-% В дверном проёме стоит коробка. Робот остановился перед ней, а новый глобальный путь снова проходит через дверь.
-% \begin{columns}[T,onlytextwidth]
-% \column{.47\textwidth}
-% \begin{block}{Глобальная карта}
-% Подключены Static Layer и Inflation Layer. На сохранённой карте дверь свободна.
-% \end{block}
-% \column{.47\textwidth}
-% \begin{block}{Локальная карта}
-% Obstacle Layer получает сканы лидара. Контроллер видит занятые клетки в дверном проёме.
-% \end{block}
-% \end{columns}
-% \medskip
-% Если добавить в глобальную карту слой наблюдений лидара, при следующем планировании можно учесть коробку и искать путь через другую дверь.
-% \end{frame}
+    \item \term{Following Server} -- организует следование
+          за движущимся объектом с поддержанием заданной
+          дистанции, например за человеком.
+  \end{itemize}
+\end{frame}
 
-% \begin{frame}{Материалы}
-% \begin{itemize}
-%   \item \href{https://docs.nav2.org/jazzy/getting_started/navigation_concepts/}{Nav2 Jazzy. Компоненты навигационной системы}.
-%   \item \href{https://ftp.osuosl.org/pub/ros/ros_wiki_mirror/costmap_2d.html}{ROS Wiki. Карта стоимости и инфляция препятствий в costmap\_2d}.
-%   \item \href{https://docs.nav2.org/jazzy/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/}{Nav2 Jazzy. Дерево навигации с перепланированием и восстановлением}.
-%   \item \href{https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/params/nav2_params.yaml}{Файл параметров nav2\_params.yaml} и \href{https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/launch/bringup_launch.py}{bringup\_launch.py} из пакета nav2\_bringup.
-% \end{itemize}
-% \end{frame}
+\begin{frame}{Другие интересные компоненты Nav2}
+  \begin{itemize}
+    \item \term{Velocity Smoother} -- сглаживает команды
+          скорости с учётом ограничений на скорость и ускорение.
+          Например, при резком изменении заданной скорости
+          команда роботу изменяется постепенно.
+
+    \item \term{Collision Monitor} -- проверяет заданные зоны
+          вокруг робота по данным датчиков. При обнаружении
+          препятствия может ограничить команду скорости
+          или остановить робота.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Запуск Nav2}
+
+  \begin{itemize}
+    \item Для запуска Nav2 необходимо запустить навигационные
+          узлы, передать им параметры и перевести управляемые
+          узлы в рабочее состояние.
+    \item Можно создать собственный launch-файл,
+          в котором описать необходимые узлы, их параметры
+          и Lifecycle Manager для управления их состояниями.
+    \item Для начала работы удобно использовать пакет
+          \term{nav2\_bringup}
+    \item Готовые launch-файлы можно включить в собственный
+          launch-файл и передать им параметры
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Файлы конфигурации Nav2}
+  \begin{itemize}
+    \item \term{Launch-файл} -- описывает запуск узлов,
+          передаваемые им параметры и переназначения топиков.
+
+    \item \term{Параметры узлов} -- YAML-файл с параметрами
+          узлов и используемых ими плагинов.
+
+    \item \term{Дерево поведения} -- XML-файл, описывающий
+          узлы дерева и связи между ними. Путь к дереву
+          по умолчанию можно задать в параметрах BT Navigator.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Плагины Nav2}
+Планировщики, контроллеры и слои карт стоимости подключаются как плагины.
+\begin{block}{Пример настройки планировщика:}
+\begin{lstlisting}[numbers=none]
+planner_server:
+  ros__parameters:
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      use_astar: false
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+
+\begin{frame}{Полезные материалы}
+\begin{itemize}
+  \item \href{https://docs.nav2.org/jazzy/}{Документация Nav2 Jazzy}
+  \item \href{https://ftp.osuosl.org/pub/ros/ros_wiki_mirror/costmap_2d.html}{ROS Wiki. costmap\_2d для ROS 1}
+  \item \href{https://docs.nav2.org/jazzy/configuration_and_development/configuration_guide/core_servers/costmap_2d/}{Документация Nav2 Jazzy. Costmap 2D}
+  
+  \item \href{https://docs.nav2.org/jazzy/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/}{Документация Nav2 Jazzy. Разбор примера дерева поведения для навигации с перепланированием и восстановлением}
+  \item \href{https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/params/nav2_params.yaml}{GitHub. Файл параметров nav2\_params.yaml из пакета nav2\_bringup} 
+  \item \href{https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/launch/bringup_launch.py}{GitHub. Launch-файл bringup\_launch.py из пакета nav2\_bringup} 
+\end{itemize}
+\end{frame}
 \end{document}
