@@ -1,0 +1,19 @@
+{
+  "duration": 60.0,
+  "position_threshold": 0.1,
+  "yaw_threshold": 0.05,
+  "confirmation_duration": 10.0,
+  "localization_mode": "initial",
+  "run_id": "initial_small_15000_realtime60_01",
+  "output_dir": "/home/ezh/practices_ws/src/practice-04/results",
+  "min_particles": 500,
+  "max_particles": 15000,
+  "error_x": 0.1,
+  "error_y": 0.1,
+  "error_yaw": 0.15,
+  "t0_simulation_s": 1.888,
+  "sample_count": 599,
+  "convergence_time_s": 5.184,
+  "sampling_period_s": 0.1,
+  "maximum_allowed_sample_gap_s": 0.3
+}
