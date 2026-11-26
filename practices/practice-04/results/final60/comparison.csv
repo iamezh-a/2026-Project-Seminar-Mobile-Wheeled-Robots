@@ -1,0 +1,7 @@
+experiment,min_particles,max_particles,convergence_time_s,confirmed_within_60_s,source_run_id
+small_1000,500,1000,5.984,True,initial_small_1000_realtime01
+small_15000,500,15000,5.184,True,initial_small_15000_realtime60_01
+large_1000,500,1000,14.304,True,initial_large_1000_realtime60_01
+large_15000,500,15000,25.279999999999998,True,initial_large_15000_realtime60_01
+global_1000,500,1000,,False,global_1000_realtime60_01
+global_15000,500,15000,,False,global_15000_realtime01
